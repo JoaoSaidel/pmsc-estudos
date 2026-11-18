@@ -466,7 +466,7 @@ function viewRedacao() {
   return `
   <section class="card">
     <h2>Redação · 20 pontos (mínimo 10)</h2>
-    <p class="dica">Pelo edital (item 11): dissertação de <b>20 a 30 linhas</b>, a partir de texto motivador. A nota é <b>NPR = NC − (erros ÷ linhas)</b>. NC é o conteúdo (tema, argumentação, coesão, coerência, estrutura), até 20 pontos. Os erros contam ortografia, morfossintaxe e pontuação. Cada linha abaixo de 20 tira 0,2. Fuga ao tema ou qualquer identificação dá <b>nota zero</b>. Mínimo para aprovação: 10. Só é corrigida a redação de quem passar na objetiva e ficar até a <b>2.000ª posição</b>.</p>
+    <p class="dica">Pelo edital (item 11): dissertação de <b>20 a 30 linhas</b>, a partir de texto motivador. A nota é <b>NPR = NC − (erros ÷ linhas)</b>. NC é o conteúdo (tema, argumentação, coesão, coerência, estrutura), até 20 pontos. Os erros contam ortografia, morfossintaxe e pontuação. Cada linha abaixo de 20 tira 0,2. Fuga ao tema ou qualquer identificação dá <b>nota zero</b>. Mínimo para aprovação: 10. Só é corrigida a redação de quem passar na objetiva e ficar até a <b>1.900ª posição na ampla concorrência</b> (ou 100ª nas vagas PcD).</p>
     <div class="linha"><button class="btn primario" data-acao="sortear-tema">Sortear tema</button></div>
     <p id="tema-sorteado" class="tema"></p>
   </section>
