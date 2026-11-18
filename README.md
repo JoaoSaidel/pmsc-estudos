@@ -17,9 +17,9 @@ Site estático (HTML + CSS + JS puro, sem build). Dados salvos no navegador e, c
 ## Configuração (uma vez)
 1. **Supabase → SQL Editor:** rode `supabase/schema.sql`.
 2. **Vercel:** Add New → Project → importe este repositório → Framework "Other", sem build → Deploy.
-3. **Supabase → Authentication → URL Configuration:** em *Site URL* e *Redirect URLs*, coloque o endereço da Vercel (ex.: `https://pmsc-estudos.vercel.app`).
-4. Entre no site, aba **Dados**, com seu e-mail. Depois, em **Authentication → Sign In / Providers**, desative *Allow new users to sign up* para ninguém mais criar conta.
+3. Abra o site em qualquer aparelho: os dados sincronizam sozinhos (sem login).
 
 ## Segurança
+- Sem login, por escolha: quem tiver o endereço do site pode ver e alterar os dados. Não divulgue o link.
+- A tabela não é acessível diretamente (RLS sem políticas); só pelas funções `pmsc_ler`/`pmsc_salvar`.
 - Só a chave `sb_publishable_...` fica no código. A chave secreta nunca entra no repositório.
-- Cada usuário só lê e grava a própria linha (RLS).

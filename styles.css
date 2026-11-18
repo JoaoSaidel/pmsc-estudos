@@ -144,4 +144,3 @@ th { color: var(--sub); font-weight: 600; font-size: .8rem; }
 .nuvem-status.ok { color: var(--ok); border-color: var(--ok); }
 .nuvem-status.erro { color: var(--erro); border-color: var(--erro); }
 .nuvem-status.sincronizando { color: var(--pri); }
-#nuvem-email { flex: 1; min-width: 200px; }

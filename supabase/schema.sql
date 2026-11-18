@@ -1,29 +1,46 @@
--- PMSC Estudos: uma linha por usuário com todo o estado do app (JSON).
+-- PMSC Estudos: sincronização SEM login, por código secreto (UUID).
 -- Cole no Supabase: SQL Editor > New query > Run.
 
-create table if not exists public.estudos (
-  user_id    uuid primary key default auth.uid() references auth.users (id) on delete cascade,
+-- Remove a tabela da versão com login (não é mais usada).
+drop table if exists public.estudos;
+
+create table if not exists public.estudos_codigo (
+  codigo     uuid primary key,
   data       jsonb       not null default '{}'::jsonb,
   updated_at timestamptz not null default now()
 );
 
-alter table public.estudos enable row level security;
+-- RLS ligado e SEM políticas: ninguém acessa a tabela diretamente.
+alter table public.estudos_codigo enable row level security;
+revoke all on public.estudos_codigo from anon, authenticated;
 
--- Cada usuário só enxerga e altera a própria linha.
-drop policy if exists "estudos_select_proprio" on public.estudos;
-create policy "estudos_select_proprio" on public.estudos
-  for select to authenticated using ((select auth.uid()) = user_id);
+-- Acesso só pelas funções abaixo, que exigem o código.
+create or replace function public.pmsc_ler(p_codigo uuid)
+returns table (data jsonb, updated_at timestamptz)
+language sql
+security definer
+set search_path = ''
+as $$
+  select e.data, e.updated_at from public.estudos_codigo e where e.codigo = p_codigo;
+$$;
 
-drop policy if exists "estudos_insert_proprio" on public.estudos;
-create policy "estudos_insert_proprio" on public.estudos
-  for insert to authenticated with check ((select auth.uid()) = user_id);
+create or replace function public.pmsc_salvar(p_codigo uuid, p_data jsonb)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if pg_column_size(p_data) > 2000000 then
+    raise exception 'dados grandes demais';
+  end if;
+  insert into public.estudos_codigo (codigo, data, updated_at)
+  values (p_codigo, p_data, now())
+  on conflict (codigo) do update set data = excluded.data, updated_at = now();
+end;
+$$;
 
-drop policy if exists "estudos_update_proprio" on public.estudos;
-create policy "estudos_update_proprio" on public.estudos
-  for update to authenticated
-  using ((select auth.uid()) = user_id)
-  with check ((select auth.uid()) = user_id);
-
--- Usuário anônimo não acessa nada; autenticado só o que as políticas permitem.
-revoke all on public.estudos from anon;
-grant select, insert, update on public.estudos to authenticated;
+revoke all on function public.pmsc_ler(uuid) from public;
+revoke all on function public.pmsc_salvar(uuid, jsonb) from public;
+grant execute on function public.pmsc_ler(uuid) to anon, authenticated;
+grant execute on function public.pmsc_salvar(uuid, jsonb) to anon, authenticated;
