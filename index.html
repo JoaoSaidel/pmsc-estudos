@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PMSC Estudos</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topo">
+    <div class="topo-linha">
+      <h1>PMSC Estudos <small>Soldado 2026 · prova em 13/12</small></h1>
+      <button id="nuvem-status" class="nuvem-status" type="button" hidden></button>
+    </div>
+    <nav id="abas" class="abas" aria-label="Seções"></nav>
+  </header>
+  <main id="conteudo"></main>
+  <footer class="rodape">Entre na aba Dados para sincronizar entre celular e PC.</footer>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/vendor/supabase.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/sync.js"></script>
+  <script>document.getElementById('nuvem-status').hidden = !window.PMSC_aposRender;</script>
+</body>
+</html>
