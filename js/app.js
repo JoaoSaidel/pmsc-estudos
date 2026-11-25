@@ -213,15 +213,52 @@ function fcResponder(acertou) {
 
 /* ================= Simulado ================= */
 let sim = null; // { questoes: [], respostas: {}, corrigido: false, inicio }
-function gerarSimulado(discs, qtd, soErradas) {
-  let pool = QUESTOES.filter((q) => discs.includes(q.d));
-  if (soErradas) {
-    const erradas = new Set(S.tentativas.filter((t) => t.qid && t.status !== 'acertou').map((t) => t.qid));
-    pool = pool.filter((q) => erradas.has(q.id));
+// Histórico por questão: quantas vezes foi respondida, posição da última tentativa e se acertou nela.
+function historicoQuestoes() {
+  const h = {};
+  S.tentativas.forEach((t, i) => {
+    if (!t.qid) return;
+    const x = h[t.qid] || (h[t.qid] = { vezes: 0 });
+    x.vezes++; x.ultima = i; x.acertou = t.status === 'acertou';
+  });
+  return h;
+}
+// Prioridade: inéditas → erradas na última vez → acertadas há mais tempo. Empates são sorteados.
+function ordenarPorPrioridade(pool, h) {
+  const nivel = (q) => (!h[q.id] ? 0 : h[q.id].acertou ? 2 : 1);
+  return embaralhar(pool).sort((a, b) => nivel(a) - nivel(b) || (h[a.id]?.ultima ?? -1) - (h[b.id]?.ultima ?? -1));
+}
+// Divide a quantidade entre as matérias proporcionalmente ao peso na prova (maiores restos primeiro).
+function cotasPorMateria(grupos, qtd) {
+  const ds = Object.keys(grupos);
+  const peso = (d) => DISCIPLINAS[d]?.questoes || 1;
+  const total = ds.reduce((s, d) => s + peso(d), 0);
+  const cota = {}; let usado = 0;
+  ds.forEach((d) => { cota[d] = Math.min(grupos[d].length, Math.floor((qtd * peso(d)) / total)); usado += cota[d]; });
+  // Distribui o que sobrou, priorizando matérias com mais questões inéditas disponíveis
+  const ordem = embaralhar(ds).sort((a, b) => (qtd * peso(b)) / total % 1 - (qtd * peso(a)) / total % 1);
+  while (usado < qtd) {
+    const d = ordem.find((k) => cota[k] < grupos[k].length);
+    if (!d) break;
+    cota[d]++; usado++; ordem.push(ordem.splice(ordem.indexOf(d), 1)[0]);
   }
-  const escolhidas = embaralhar(pool).slice(0, qtd);
-  // Questões com texto-base vêm primeiro e agrupadas, como na prova
-  escolhidas.sort((x, y) => (y.t ? 1 : 0) - (x.t ? 1 : 0) || String(x.t || '').localeCompare(String(y.t || '')));
+  return cota;
+}
+function embaralharAlternativas(q) {
+  const idx = embaralhar(q.o.map((_, i) => i));
+  return { ...q, o: idx.map((i) => q.o[i]), r: idx.indexOf(q.r) };
+}
+function gerarSimulado(discs, qtd, soErradas) {
+  const h = historicoQuestoes();
+  let pool = QUESTOES.filter((q) => discs.includes(q.d));
+  if (soErradas) pool = pool.filter((q) => h[q.id] && !h[q.id].acertou);
+  const grupos = {};
+  pool.forEach((q) => (grupos[q.d] = grupos[q.d] || []).push(q));
+  const cota = cotasPorMateria(grupos, qtd);
+  const escolhidas = Object.keys(grupos).flatMap((d) => ordenarPorPrioridade(grupos[d], h).slice(0, cota[d])).map(embaralharAlternativas);
+  // Ordem da prova: matérias na sequência do edital; dentro delas, texto-base agrupado primeiro
+  const ordemD = Object.keys(DISCIPLINAS);
+  escolhidas.sort((x, y) => ordemD.indexOf(x.d) - ordemD.indexOf(y.d) || (y.t ? 1 : 0) - (x.t ? 1 : 0) || String(x.t || '').localeCompare(String(y.t || '')));
   sim = { questoes: escolhidas, respostas: {}, corrigido: false, inicio: Date.now() };
 }
 function corrigirSimulado() {
@@ -336,15 +373,15 @@ function viewCronograma() {
 }
 
 function viewSimulado() {
-  const contagem = {};
-  QUESTOES.forEach((q) => { contagem[q.d] = (contagem[q.d] || 0) + 1; });
+  const contagem = {}; const ineditas = {}; const h = historicoQuestoes();
+  QUESTOES.forEach((q) => { contagem[q.d] = (contagem[q.d] || 0) + 1; if (!h[q.id]) ineditas[q.d] = (ineditas[q.d] || 0) + 1; });
   if (!sim) {
     return `
     <section class="card">
       <h2>Gerar simulado</h2>
-      <p class="dica">Banco com ${QUESTOES.length} questões originais (5 alternativas, como na AOCP). É para treinar, não substitui as provas oficiais. Peça mais questões no chat informando a disciplina e o assunto.</p>
+      <p class="dica">Banco com ${QUESTOES.length} questões originais (5 alternativas, como na AOCP). O sorteio prioriza as que você nunca fez, depois as que errou e por último as acertadas há mais tempo; as alternativas mudam de ordem a cada simulado. Com várias matérias marcadas, a quantidade segue o peso de cada uma na prova.</p>
       <div class="grade-check">${Object.keys(contagem).map((d) => `
-        <label class="check"><input type="checkbox" name="sim-d" value="${d}" checked> ${esc(nomeD(d))} <small>(${contagem[d]})</small></label>`).join('')}</div>
+        <label class="check"><input type="checkbox" name="sim-d" value="${d}" checked> ${esc(nomeD(d))} <small>(${ineditas[d] || 0} inéditas de ${contagem[d]})</small></label>`).join('')}</div>
       <div class="linha">
         <label>Quantidade <input type="number" id="sim-qtd" min="1" max="${QUESTOES.length}" value="15"></label>
         <label class="check"><input type="checkbox" id="sim-erradas"> só questões que já errei</label>
