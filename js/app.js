@@ -32,7 +32,7 @@ window.PMSC = {
 const $ = (sel, el = document) => el.querySelector(sel);
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 // Texto de questão: escapa e transforma __termo__ em termo destacado (sublinhado e negrito, como na prova).
-const fmtQ = (t) => esc(t).replace(/__(.+?)__/g, '<u><b>$1</b></u>');
+const fmtQ = (t) => esc(t).replace(/__(.+?)__/g, '<u><b>$1</b></u>').replace(/\n/g, '<br>');
 const pad = (n) => String(n).padStart(2, '0');
 const isoLocal = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const hoje = () => isoLocal(new Date());
