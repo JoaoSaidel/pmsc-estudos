@@ -91,6 +91,8 @@ th { color: var(--sub); font-weight: 600; font-size: .8rem; }
 /* Simulado */
 .questao p { margin: 8px 0; }
 .q-topo { display: flex; gap: 8px; align-items: center; } .q-topo small { color: var(--sub); }
+.q-topo { flex-wrap: wrap; }
+.selo-oficial { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; color: var(--sub); }
 .alts { list-style: none; padding: 0; margin: 0; }
 .alts li { border: 1px solid var(--borda); border-radius: 8px; margin-bottom: 6px; }
 .alts label { display: flex; gap: 8px; padding: 8px 10px; cursor: pointer; align-items: baseline; }

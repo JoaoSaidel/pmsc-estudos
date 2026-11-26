@@ -31,6 +31,8 @@ window.PMSC = {
 /* ================= Utilitários ================= */
 const $ = (sel, el = document) => el.querySelector(sel);
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// Texto de questão: escapa e transforma __termo__ em termo destacado (sublinhado e negrito, como na prova).
+const fmtQ = (t) => esc(t).replace(/__(.+?)__/g, '<u><b>$1</b></u>');
 const pad = (n) => String(n).padStart(2, '0');
 const isoLocal = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const hoje = () => isoLocal(new Date());
@@ -248,9 +250,9 @@ function embaralharAlternativas(q) {
   const idx = embaralhar(q.o.map((_, i) => i));
   return { ...q, o: idx.map((i) => q.o[i]), r: idx.indexOf(q.r) };
 }
-function gerarSimulado(discs, qtd, soErradas) {
+function gerarSimulado(discs, qtd, soErradas, origem = 'todas') {
   const h = historicoQuestoes();
-  let pool = QUESTOES.filter((q) => discs.includes(q.d));
+  let pool = QUESTOES.filter((q) => discs.includes(q.d) && (origem === 'todas' || (origem === 'oficiais') === Boolean(q.fonte)));
   if (soErradas) pool = pool.filter((q) => h[q.id] && !h[q.id].acertou);
   const grupos = {};
   pool.forEach((q) => (grupos[q.d] = grupos[q.d] || []).push(q));
@@ -379,11 +381,12 @@ function viewSimulado() {
     return `
     <section class="card">
       <h2>Gerar simulado</h2>
-      <p class="dica">Banco com ${QUESTOES.length} questões originais (5 alternativas, como na AOCP). O sorteio prioriza as que você nunca fez, depois as que errou e por último as acertadas há mais tempo; as alternativas mudam de ordem a cada simulado. Com várias matérias marcadas, a quantidade segue o peso de cada uma na prova.</p>
+      <p class="dica">Banco com ${QUESTOES.length} questões: ${QUESTOES.filter((q) => !q.fonte).length} originais e ${QUESTOES.filter((q) => q.fonte).length} de provas oficiais da AOCP (só assuntos do seu edital, com gabarito definitivo). O sorteio prioriza as que você nunca fez, depois as que errou e por último as acertadas há mais tempo; as alternativas mudam de ordem a cada simulado. Com várias matérias marcadas, a quantidade segue o peso de cada uma na prova.</p>
       <div class="grade-check">${Object.keys(contagem).map((d) => `
         <label class="check"><input type="checkbox" name="sim-d" value="${d}" checked> ${esc(nomeD(d))} <small>(${ineditas[d] || 0} inéditas de ${contagem[d]})</small></label>`).join('')}</div>
       <div class="linha">
         <label>Quantidade <input type="number" id="sim-qtd" min="1" max="${QUESTOES.length}" value="15"></label>
+        <label>Origem <select id="sim-origem"><option value="todas">Todas</option><option value="originais">Só originais</option><option value="oficiais">Só provas AOCP</option></select></label>
         <label class="check"><input type="checkbox" id="sim-erradas"> só questões que já errei</label>
         <button class="btn primario" data-acao="gerar-sim">Gerar</button>
       </div>
@@ -401,13 +404,13 @@ function viewSimulado() {
   </section>
   ${sim.questoes.map((q, i) => `
   <section class="card questao">
-    <div class="q-topo">${chip(q.d)} <small>${esc(q.a)}</small></div>
-    ${q.t && TEXTOS[q.t] ? `<details class="texto-base"><summary>Texto: ${esc(TEXTOS[q.t].titulo)}</summary>${TEXTOS[q.t].corpo.map((par) => `<p>${esc(par)}</p>`).join('')}<p class="dica">Texto original escrito para este simulado.</p></details>` : ''}
-    <p><b>${i + 1}.</b> ${esc(q.e)}</p>
+    <div class="q-topo">${chip(q.d)} <small>${esc(q.a)}</small>${q.fonte ? ` <span class="selo-oficial">${esc(q.fonte)}</span>` : ''}</div>
+    ${q.t && TEXTOS[q.t] ? `<details class="texto-base"><summary>Texto: ${esc(TEXTOS[q.t].titulo)}</summary>${TEXTOS[q.t].corpo.map((par) => `<p>${esc(par)}</p>`).join('')}<p class="dica">${q.fonte ? 'Texto reproduzido da prova oficial.' : 'Texto original escrito para este simulado.'}</p></details>` : ''}
+    <p><b>${i + 1}.</b> ${fmtQ(q.e)}</p>
     <ol class="alts">${q.o.map((alt, j) => {
       let cls = '';
       if (sim.corrigido) { if (j === q.r) cls = 'certa'; else if (sim.respostas[q.id] === j) cls = 'errada'; }
-      return `<li class="${cls}"><label><input type="radio" name="q-${q.id}" data-acao="responder" data-q="${q.id}" value="${j}" ${sim.respostas[q.id] === j ? 'checked' : ''} ${sim.corrigido ? 'disabled' : ''}> <b>${'ABCDE'[j]})</b> ${esc(alt)}</label></li>`;
+      return `<li class="${cls}"><label><input type="radio" name="q-${q.id}" data-acao="responder" data-q="${q.id}" value="${j}" ${sim.respostas[q.id] === j ? 'checked' : ''} ${sim.corrigido ? 'disabled' : ''}> <b>${'ABCDE'[j]})</b> <span>${fmtQ(alt)}</span></label></li>`;
     }).join('')}</ol>
     ${sim.corrigido ? `<p class="explicacao">${esc(q.x)}</p>` : ''}
   </section>`).join('')}
@@ -669,7 +672,7 @@ document.addEventListener('click', (ev) => {
     case 'encerrar': timerEncerrar(); break;
     case 'gerar-sim': {
       const discs = [...document.querySelectorAll('input[name="sim-d"]:checked')].map((i) => i.value);
-      gerarSimulado(discs, Math.max(1, Number($('#sim-qtd').value) || 10), $('#sim-erradas').checked);
+      gerarSimulado(discs, Math.max(1, Number($('#sim-qtd').value) || 10), $('#sim-erradas').checked, $('#sim-origem').value);
       render(); break;
     }
     case 'corrigir-sim': {
